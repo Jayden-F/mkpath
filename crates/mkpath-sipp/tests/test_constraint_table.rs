@@ -1,4 +1,4 @@
-use mkpath_sipp::{Action, ConstraintTable, SearchResult, UnsafeInterval};
+use mkpath_sipp::{Action, ConstraintTable, UnsafeInterval};
 
 #[cfg(test)]
 mod tests {
@@ -23,39 +23,22 @@ mod tests {
         let agent_id = 0;
         let action = Action::Up;
 
-        assert_eq!(
-            constraint_table.find_interval_index(location, 5),
-            SearchResult::Miss(0)
-        );
-
         constraint_table.add_constraint(
             location,
             UnsafeInterval::new(5, 10, agent_id, action.clone()),
         );
 
-        assert_eq!(
-            constraint_table.find_interval_index(location, 0),
-            SearchResult::Miss(0)
-        );
+        assert_eq!(constraint_table.find_interval_index(location, 0), Err(0));
 
-        assert_eq!(
-            constraint_table.find_interval_index(location, 5),
-            SearchResult::Hit(0)
-        );
+        assert_eq!(constraint_table.find_interval_index(location, 5), Ok(0));
 
-        assert_eq!(
-            constraint_table.find_interval_index(location, 15),
-            SearchResult::Miss(1)
-        );
+        assert_eq!(constraint_table.find_interval_index(location, 15), Err(1));
 
         constraint_table.add_constraint(
             location,
             UnsafeInterval::new(15, 20, agent_id, action.clone()),
         );
 
-        assert_eq!(
-            constraint_table.find_interval_index(location, 15),
-            SearchResult::Hit(1)
-        );
+        assert_eq!(constraint_table.find_interval_index(location, 15), Ok(1));
     }
 }

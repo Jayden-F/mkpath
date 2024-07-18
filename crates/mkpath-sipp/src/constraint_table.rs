@@ -1,4 +1,4 @@
-use crate::{binary_search, Action, SafeInterval, SearchResult, UnsafeInterval};
+use crate::{Action, SafeInterval, UnsafeInterval};
 use core::cmp::Ordering;
 
 pub struct ConstraintTable {
@@ -15,8 +15,8 @@ impl ConstraintTable {
     pub fn add_constraint(&mut self, location: usize, unsafe_interval: UnsafeInterval) {
         let result = self.find_interval_index(location, unsafe_interval.s_time);
         match result {
-            SearchResult::Hit(_) => panic!("Adding constraint that already exists"),
-            SearchResult::Miss(index) => self.resources[location].insert(index, unsafe_interval),
+            Ok(_) => panic!("Adding constraint that already exists"),
+            Err(index) => self.resources[location].insert(index, unsafe_interval),
         }
     }
 
@@ -30,14 +30,14 @@ impl ConstraintTable {
     ) {
         let result = self.find_interval_index(location, s_time);
         match result {
-            SearchResult::Hit(index) => {
+            Ok(index) => {
                 assert_eq!(self.resources[location][index].s_time, s_time);
                 assert_eq!(self.resources[location][index].e_time, e_time);
                 assert_eq!(self.resources[location][index].agent_id, agent_id);
                 assert_eq!(self.resources[location][index].action, action);
                 self.resources[location].remove(index);
             }
-            SearchResult::Miss(_) => panic!("Adding constraint that does not exist"),
+            Err(_) => panic!("Adding constraint that does not exist"),
         }
     }
 
@@ -63,32 +63,34 @@ impl ConstraintTable {
                 Action::Wait,
             ))
         } else if index == num_constraints {
+            let constraint = &location_constraints[index];
             Some(SafeInterval::new(
-                location_constraints[index].e_time,
+                constraint.e_time,
                 u64::MAX,
-                location_constraints[index].agent_id,
-                location_constraints[index].action.clone(),
+                constraint.agent_id,
+                constraint.action.clone(),
             ))
         } else {
+            let constraint = &location_constraints[index - 1];
             Some(SafeInterval::new(
-                location_constraints[index - 1].e_time,
+                constraint.e_time,
                 location_constraints[index].s_time,
-                location_constraints[index - 1].agent_id,
-                location_constraints[index - 1].action.clone(),
+                constraint.agent_id,
+                constraint.action.clone(),
             ))
         }
     }
 
-    pub fn find_interval_index(&self, location: usize, timestep: u64) -> SearchResult {
+    pub fn find_interval_index(&self, location: usize, timestep: u64) -> Result<usize, usize> {
         let cmp = |x: &UnsafeInterval| -> Ordering {
             if timestep < x.s_time {
-                return Ordering::Less;
-            } else if timestep >= x.e_time {
                 return Ordering::Greater;
+            } else if timestep >= x.e_time {
+                return Ordering::Less;
             } else {
                 return Ordering::Equal;
             }
         };
-        binary_search(&self.resources[location], cmp)
+        self.resources[location].binary_search_by(cmp)
     }
 }
